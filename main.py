@@ -3,69 +3,133 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-# ------------------------------------
+# -----------------------------
 # Configuración de la página
-# ------------------------------------
+# -----------------------------
 st.set_page_config(
-    page_title="Análisis Exploratorio con Datos Aleatorios",
+    page_title="Análisis Experimental Biológico",
     layout="wide"
 )
 
-st.title("📊 Análisis Exploratorio de Datos Aleatorios")
+st.title("🧬 Análisis Exploratorio de Experimento Biológico")
 st.markdown(
     """
-    Este dashboard genera un conjunto de datos aleatorios y realiza un análisis exploratorio básico.
-    Incluye visualizaciones en **gráfica de barras** y **gráfica de líneas** usando Plotly.
+    Esta aplicación permite explorar datos de un experimento biológico simulado con **600 muestras** y **8 variables**.
+    Puedes filtrar, visualizar y analizar los datos de forma interactiva.
     """
 )
 
-# ------------------------------------
-# Generar datos aleatorios
-# ------------------------------------
-st.sidebar.header("⚙️ Configuración de datos")
-num_filas = st.sidebar.slider("Número de filas", min_value=10, max_value=100, value=30, step=5)
-num_columnas = st.sidebar.slider("Número de columnas", min_value=2, max_value=5, value=3)
-
+# -----------------------------
+# Generar datos simulados
+# -----------------------------
 np.random.seed(42)
-columnas = [f"Variable_{i+1}" for i in range(num_columnas)]
-datos = pd.DataFrame(np.random.randint(0, 100, size=(num_filas, num_columnas)), columns=columnas)
+num_muestras = 600
+variables = [
+    "Longitud", "Peso", "Temperatura", "PH", "Proteína", "Glucosa", "Lípidos", "Enzima"
+]
 
-# Agregar una columna de categorías para ejemplo
-datos["Categoría"] = np.random.choice(["A", "B", "C"], size=num_filas)
+df = pd.DataFrame({
+    "Muestra": range(1, num_muestras + 1),
+    "Grupo": np.random.choice(["Control", "Tratado"], size=num_muestras),
+    "Longitud": np.random.normal(50, 10, num_muestras),
+    "Peso": np.random.normal(20, 5, num_muestras),
+    "Temperatura": np.random.normal(37, 0.5, num_muestras),
+    "PH": np.random.normal(7.4, 0.3, num_muestras),
+    "Proteína": np.random.normal(5, 1.2, num_muestras),
+    "Glucosa": np.random.normal(100, 15, num_muestras),
+    "Lípidos": np.random.normal(150, 25, num_muestras),
+    "Enzima": np.random.normal(200, 30, num_muestras)
+})
 
-# ------------------------------------
-# Mostrar datos y estadísticas
-# ------------------------------------
-st.subheader("📋 Vista previa de los datos")
-st.dataframe(datos)
+# -----------------------------
+# Filtros en la barra lateral
+# -----------------------------
+st.sidebar.header("⚙️ Controles")
 
-st.subheader("📈 Estadísticas descriptivas")
-st.write(datos.describe())
-
-# ------------------------------------
-# Visualización: Barras
-# ------------------------------------
-st.subheader("📊 Gráfica de Barras")
-columna_barras = st.selectbox("Selecciona variable para gráfica de barras:", columnas)
-barras = datos.groupby("Categoría")[columna_barras].mean().reset_index()
-fig_barras = px.bar(
-    barras,
-    x="Categoría",
-    y=columna_barras,
-    color="Categoría",
-    title=f"Promedio de {columna_barras} por Categoría"
+# Filtro por grupo
+grupo_seleccionado = st.sidebar.multiselect(
+    "Selecciona grupo(s):",
+    options=df["Grupo"].unique(),
+    default=df["Grupo"].unique()
 )
-st.plotly_chart(fig_barras, use_container_width=True)
 
-# ------------------------------------
-# Visualización: Líneas
-# ------------------------------------
-st.subheader("📈 Gráfica de Líneas")
-columna_linea = st.selectbox("Selecciona variable para gráfica de líneas:", columnas)
-fig_linea = px.line(
-    datos,
-    y=columna_linea,
-    title=f"Evolución de {columna_linea} en el tiempo",
-    markers=True
+# Slider para filtrar por rango de valores de una variable
+variable_filtro = st.sidebar.selectbox("Variable para filtrar rango:", variables)
+min_val = float(df[variable_filtro].min())
+max_val = float(df[variable_filtro].max())
+rango = st.sidebar.slider(
+    f"Rango de {variable_filtro}",
+    min_value=min_val,
+    max_value=max_val,
+    value=(min_val, max_val)
 )
-st.plotly_chart(fig_linea, use_container_width=True)
+
+# -----------------------------
+# Aplicar filtros
+# -----------------------------
+df_filtrado = df[
+    (df["Grupo"].isin(grupo_seleccionado)) &
+    (df[variable_filtro].between(rango[0], rango[1]))
+]
+
+# -----------------------------
+# Checkboxes para mostrar info
+# -----------------------------
+if st.checkbox("Mostrar datos filtrados"):
+    st.dataframe(df_filtrado)
+
+if st.checkbox("Mostrar estadísticas descriptivas"):
+    st.write(df_filtrado.describe())
+
+# -----------------------------
+# Selección de tipo de gráfico
+# -----------------------------
+tipo_grafico = st.radio(
+    "Selecciona tipo de gráfico:",
+    ["Barras", "Líneas", "Dispersión", "Histograma"]
+)
+
+variable_x = st.selectbox("Variable en eje X:", ["Muestra", "Grupo"])
+variable_y = st.selectbox("Variable en eje Y:", variables)
+
+# -----------------------------
+# Visualizaciones dinámicas
+# -----------------------------
+if tipo_grafico == "Barras":
+    fig = px.bar(
+        df_filtrado,
+        x=variable_x,
+        y=variable_y,
+        color="Grupo",
+        title=f"Gráfico de barras - {variable_y} vs {variable_x}"
+    )
+
+elif tipo_grafico == "Líneas":
+    fig = px.line(
+        df_filtrado,
+        x=variable_x,
+        y=variable_y,
+        color="Grupo",
+        markers=True,
+        title=f"Gráfico de líneas - {variable_y} vs {variable_x}"
+    )
+
+elif tipo_grafico == "Dispersión":
+    fig = px.scatter(
+        df_filtrado,
+        x=variable_x,
+        y=variable_y,
+        color="Grupo",
+        title=f"Gráfico de dispersión - {variable_y} vs {variable_x}"
+    )
+
+elif tipo_grafico == "Histograma":
+    fig = px.histogram(
+        df_filtrado,
+        x=variable_y,
+        color="Grupo",
+        nbins=20,
+        title=f"Histograma - {variable_y}"
+    )
+
+st.plotly_chart(fig, use_container_width=True)
