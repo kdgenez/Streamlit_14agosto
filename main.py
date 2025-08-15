@@ -82,54 +82,67 @@ if st.checkbox("Mostrar estadísticas descriptivas"):
     st.write(df_filtrado.describe())
 
 # -----------------------------
-# Selección de tipo de gráfico
+# Selección de gráficos
 # -----------------------------
-tipo_grafico = st.radio(
-    "Selecciona tipo de gráfico:",
-    ["Barras", "Líneas", "Dispersión", "Histograma"]
+tipos_disponibles = ["Barras", "Líneas", "Dispersión", "Histograma"]
+graficos_seleccionados = st.multiselect(
+    "Selecciona uno o dos tipos de gráficos para mostrar:",
+    tipos_disponibles,
+    default=["Barras", "Líneas"]
 )
 
 variable_x = st.selectbox("Variable en eje X:", ["Muestra", "Grupo"])
 variable_y = st.selectbox("Variable en eje Y:", variables)
 
 # -----------------------------
-# Visualizaciones dinámicas
+# Función para crear gráficos
 # -----------------------------
-if tipo_grafico == "Barras":
-    fig = px.bar(
-        df_filtrado,
-        x=variable_x,
-        y=variable_y,
-        color="Grupo",
-        title=f"Gráfico de barras - {variable_y} vs {variable_x}"
-    )
+def crear_grafico(tipo):
+    if tipo == "Barras":
+        return px.bar(
+            df_filtrado,
+            x=variable_x,
+            y=variable_y,
+            color="Grupo",
+            title=f"{tipo} - {variable_y} vs {variable_x}"
+        )
+    elif tipo == "Líneas":
+        return px.line(
+            df_filtrado,
+            x=variable_x,
+            y=variable_y,
+            color="Grupo",
+            markers=True,
+            title=f"{tipo} - {variable_y} vs {variable_x}"
+        )
+    elif tipo == "Dispersión":
+        return px.scatter(
+            df_filtrado,
+            x=variable_x,
+            y=variable_y,
+            color="Grupo",
+            title=f"{tipo} - {variable_y} vs {variable_x}"
+        )
+    elif tipo == "Histograma":
+        return px.histogram(
+            df_filtrado,
+            x=variable_y,
+            color="Grupo",
+            nbins=20,
+            title=f"{tipo} - {variable_y}"
+        )
 
-elif tipo_grafico == "Líneas":
-    fig = px.line(
-        df_filtrado,
-        x=variable_x,
-        y=variable_y,
-        color="Grupo",
-        markers=True,
-        title=f"Gráfico de líneas - {variable_y} vs {variable_x}"
-    )
+# -----------------------------
+# Mostrar gráficos
+# -----------------------------
+if len(graficos_seleccionados) == 1:
+    st.plotly_chart(crear_grafico(graficos_seleccionados[0]), use_container_width=True)
+elif len(graficos_seleccionados) == 2:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.plotly_chart(crear_grafico(graficos_seleccionados[0]), use_container_width=True)
+    with col2:
+        st.plotly_chart(crear_grafico(graficos_seleccionados[1]), use_container_width=True)
+else:
+    st.warning("Selecciona uno o dos tipos de gráficos para mostrar.")
 
-elif tipo_grafico == "Dispersión":
-    fig = px.scatter(
-        df_filtrado,
-        x=variable_x,
-        y=variable_y,
-        color="Grupo",
-        title=f"Gráfico de dispersión - {variable_y} vs {variable_x}"
-    )
-
-elif tipo_grafico == "Histograma":
-    fig = px.histogram(
-        df_filtrado,
-        x=variable_y,
-        color="Grupo",
-        nbins=20,
-        title=f"Histograma - {variable_y}"
-    )
-
-st.plotly_chart(fig, use_container_width=True)
